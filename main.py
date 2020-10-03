@@ -30,6 +30,9 @@ def get_addresses():
         '0x020b1573f2ca670190d33ca2f0a57b0c0399ad37',
         '0x052Ee5470868D14b158abb10DfcC76eD1cD1293d',
     ]
+    addresses_lower = []
+    for add in addresses:
+        addresses_lower.append(add.lower())
     return addresses
 
 
@@ -40,7 +43,7 @@ def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
     node_set.add(address)
     cur_dir = os.path.join(cur_dir, address)
     os.makedirs(cur_dir, exist_ok=True)
-    print(f"{cur_order}-order@{cur_dir}, {time.time()-time_}")
+    print(f"{cur_order}-order@{cur_dir}, {time.time()-time_:.1f}s")
 
     txns = get_txns_from_address(address)
     txn_df = pd.DataFrame(columns=TXN_DF_COLUMN_NAMES)
