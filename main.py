@@ -33,7 +33,7 @@ def get_addresses():
     addresses_lower = []
     for add in addresses:
         addresses_lower.append(add.lower())
-    return addresses
+    return addresses_lower
 
 
 def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
