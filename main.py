@@ -33,9 +33,10 @@ def get_addresses():
 
 
 def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
-    if cur_order == k - 1:
+    if k == cur_order - 1:
         return
 
+    node_set.add(address)
     cur_dir = os.path.join(cur_dir, address)
     os.makedirs(cur_dir, exist_ok=True)
     print(f"{cur_order}-order@{cur_dir}")
@@ -45,15 +46,13 @@ def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
     neighbor_set = set()
     for txn in txns:
         if is_valid_txn(txn):
-            txn_df.append(txn2pdseries(txn), ignore_index=True)
+            txn_df = txn_df.append(txn2pdseries(txn), ignore_index=True)
             neighbor_from = txn['from'].lower()
             neighbor_to = txn['to'].lower()
             if neighbor_from != address:
-                node_set.add(neighbor_from)
                 neighbor_set.add(neighbor_from)
                 get_k_order_neighbor(node_set, cur_dir, neighbor_from, cur_order+1, k)
             elif neighbor_to != address:
-                node_set.add(neighbor_to)
                 neighbor_set.add(neighbor_to)
                 get_k_order_neighbor(node_set, cur_dir, neighbor_to, cur_order+1, k)
 
@@ -81,7 +80,7 @@ def is_valid_txn(txn):
     return txn['value'] != '0' and txn['isError'] != '1'
 
 def txn2pdseries(txn):
-    for k, v in txn:
+    for k, v in txn.items():
         if v == "":
             txn[k] = 'NULL'
         if k == 'value':
