@@ -11,7 +11,6 @@ apikey="F9PB22XVU41P78AVBY3RZEK8EQMXE4HAGN" #这个换成自己账户的apikey
 http_headers =  { 'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                ' Chrome/58.0.3029.110 Safari/537.36' }
 
-
 def wei2ether(s):
     length=len(s)
     t = length - 18
