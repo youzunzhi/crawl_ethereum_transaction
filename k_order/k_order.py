@@ -8,9 +8,6 @@ import queue
 
 apikey="F9PB22XVU41P78AVBY3RZEK8EQMXE4HAGN" #这个换成自己账户的apikey
 
-import pydevd_pycharm
-pydevd_pycharm.settrace('172.19.59.95', port=12345, stdoutToServer=True, stderrToServer=True)
-
 http_headers =  { 'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
                                ' Chrome/58.0.3029.110 Safari/537.36' }
 
