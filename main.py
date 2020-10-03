@@ -60,9 +60,9 @@ def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
             #     neighbor_set.add(neighbor_to)
             #     get_k_order_neighbor(node_set, cur_dir, neighbor_to, cur_order+1, k)
             neighbor = txn['from'].lower() if txn['from'].lower()!=address else txn['to'].lower()
-            neighbor_set.add(neighbor)
             if neighbor not in cur_dir.split('/') and neighbor not in neighbor_set:
                 get_k_order_neighbor(node_set, cur_dir, neighbor, cur_order+1, k)
+            neighbor_set.add(neighbor)
 
     txn_df.to_csv(os.path.join(cur_dir, 'txns.csv'))
     df_neighbor = pd.DataFrame(data=list(neighbor_set), columns=['address'])
@@ -134,7 +134,7 @@ def print_node_hash(node_set, output_dir):
     for node in node_set:
         hash_idx = int(node, 16) % 100
         hash_dict[hash_idx].append(node)
-    with open(os.path.join(output_dir, 'node_hash.txt')) as f:
+    with open(os.path.join(output_dir, 'node_hash.txt'), 'w') as f:
         for i in range(HASH_LEN):
             for node in hash_dict[i]:
                 f.write(node + ' ')
