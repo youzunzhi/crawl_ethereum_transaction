@@ -4,6 +4,7 @@ import urllib.request as urlrequest
 import json
 import os
 import datetime
+import time
 
 apikey="F9PB22XVU41P78AVBY3RZEK8EQMXE4HAGN" #这个换成自己账户的apikey
 TXN_DF_COLUMN_NAMES = ['TxHash', 'BlockHeight', 'TimeStamp', 'From', 'To', 'Value', 'ContractAddress', 'Input', 'isError']
@@ -11,7 +12,7 @@ TXN_FIELD_NAMES = ['hash', 'blockNumber', 'timeStamp', 'from', 'to', 'value', 'c
 OUTPUT_DIR = f'results-[{(datetime.datetime.now()).strftime("%m%d%H%M%S")}]/'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-
+time_ = time.time()
 def main():
     node_set = set()
     addresses = get_addresses()
@@ -39,7 +40,7 @@ def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
     node_set.add(address)
     cur_dir = os.path.join(cur_dir, address)
     os.makedirs(cur_dir, exist_ok=True)
-    print(f"{cur_order}-order@{cur_dir}")
+    print(f"{cur_order}-order@{cur_dir}, {time.time()-time_}")
 
     txns = get_txns_from_address(address)
     txn_df = pd.DataFrame(columns=TXN_DF_COLUMN_NAMES)
@@ -47,14 +48,18 @@ def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
     for txn in txns:
         if is_valid_txn(txn):
             txn_df = txn_df.append(txn2pdseries(txn), ignore_index=True)
-            neighbor_from = txn['from'].lower()
-            neighbor_to = txn['to'].lower()
-            if neighbor_from != address:
-                neighbor_set.add(neighbor_from)
-                get_k_order_neighbor(node_set, cur_dir, neighbor_from, cur_order+1, k)
-            elif neighbor_to != address:
-                neighbor_set.add(neighbor_to)
-                get_k_order_neighbor(node_set, cur_dir, neighbor_to, cur_order+1, k)
+            # neighbor_from = txn['from'].lower()
+            # neighbor_to = txn['to'].lower()
+            # if neighbor_from != address:
+            #     neighbor_set.add(neighbor_from)
+            #     get_k_order_neighbor(node_set, cur_dir, neighbor_from, cur_order+1, k)
+            # elif neighbor_to != address:
+            #     neighbor_set.add(neighbor_to)
+            #     get_k_order_neighbor(node_set, cur_dir, neighbor_to, cur_order+1, k)
+            neighbor = txn['from'].lower() if txn['from'].lower()!=address else txn['to'].lower()
+            neighbor_set.add(neighbor)
+            if neighbor not in cur_dir.split('/'):
+                get_k_order_neighbor(node_set, cur_dir, neighbor, cur_order+1, k)
 
     txn_df.to_csv(os.path.join(cur_dir, 'txns.csv'))
     df_neighbor = pd.DataFrame(data=list(neighbor_set), columns=['address'])
@@ -77,7 +82,15 @@ def get_txns_from_address(address):
 
 
 def is_valid_txn(txn):
-    return txn['value'] != '0' and txn['isError'] != '1'
+    if txn['value'] != '0':
+        return False
+    if txn['isError'] != '1':
+        return False
+    if txn['from'].lower() == txn['to'].lower():
+        print(txn['from'].lower())
+        return False
+    return True
+
 
 def txn2pdseries(txn):
     for k, v in txn.items():
