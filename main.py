@@ -61,7 +61,7 @@ def get_k_order_neighbor(node_set, cur_dir, address, cur_order, k):
             #     get_k_order_neighbor(node_set, cur_dir, neighbor_to, cur_order+1, k)
             neighbor = txn['from'].lower() if txn['from'].lower()!=address else txn['to'].lower()
             neighbor_set.add(neighbor)
-            if neighbor not in cur_dir.split('/'):
+            if neighbor not in cur_dir.split('/') and neighbor not in neighbor_set:
                 get_k_order_neighbor(node_set, cur_dir, neighbor, cur_order+1, k)
 
     txn_df.to_csv(os.path.join(cur_dir, 'txns.csv'))
