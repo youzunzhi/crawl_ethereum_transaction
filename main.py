@@ -80,6 +80,7 @@ def get_k_order_neighbors_txns(pardir, node, cur_order):
         if get_order_of_searched_node(node) > cur_order:
             print(f"moving {os.path.join(node_pardir_dict[node], node)} to {pardir}")
             shutil.move(os.path.join(node_pardir_dict[node], node), pardir)
+            node_pardir_dict[node] = pardir
             neighbors = get_neighbors(node)
             for neighbor in neighbors:
                 get_k_order_neighbors_txns(os.path.join(pardir, node), neighbor, cur_order + 1)
@@ -121,8 +122,8 @@ def is_valid_txn(txn):
         return False
     if txn['isError'] == '1':
         return False
-    if txn['from'].lower() == txn['to'].lower():
-        print(txn['from'].lower())
+    if txn['from'].lower() == txn['to'].lower(): # is this invalid?
+        # print(txn['from'].lower())
         return False
     return True
 
