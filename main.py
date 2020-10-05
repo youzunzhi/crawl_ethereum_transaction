@@ -85,7 +85,7 @@ def get_k_order_neighbors_txns(pardir, node, cur_order):
         if node not in node_pardir_dict:
             node_pardir_dict[node] = pardir
         return
-    print(f"{cur_order}-order node {node} under {pardir}, {time.time()-time_:.1f}s")
+    print(f"{cur_order}-order node {node} @ {pardir}, {time.strftime('%H:%M:%S', time.gmtime(time.time()-time_))}")
     if node in node_pardir_dict and os.path.exists(os.path.join(node_pardir_dict[node], f'{node}/neighbors.csv')):
         if get_order_of_searched_node(node) > cur_order:
             print(f"moving {os.path.join(node_pardir_dict[node], node)} to {pardir}")
