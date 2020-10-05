@@ -7,14 +7,14 @@ import shutil
 import time
 import datetime
 
-apikey="F9PB22XVU41P78AVBY3RZEK8EQMXE4HAGN" #这个换成自己账户的apikey
+apikey="F9PB22XVU41P78AVBY3RZEK8EQMXE4HAGN"     # 这个换成自己账户的apikey
 TXN_DF_COLUMN_NAMES = ['TxHash', 'BlockHeight', 'TimeStamp', 'From', 'To', 'Value', 'ContractAddress', 'Input', 'isError']
 TXN_FIELD_NAMES = ['hash', 'blockNumber', 'timeStamp', 'from', 'to', 'value', 'contractAddress', 'input', 'isError']
 OUTPUT_DIR = f'results-[{(datetime.datetime.now()).strftime("%m%d%H%M%S")}]/'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 K = 2
-node_pardir_dict = {}
+node_pardir_dict = {}   # one-to-one mapping b/w node(addr) and its parent directory
 
 time_ = time.time()
 def main():
@@ -89,6 +89,8 @@ def get_k_order_neighbors_txns(pardir, node, cur_order):
     else:
         node_pardir_dict[node] = pardir
         txns = get_txns_of_node(node)
+        if len(txns) >= 10000:
+            return
         txn_df = pd.DataFrame(columns=TXN_DF_COLUMN_NAMES)
         neighbor_set = set()
         for txn in txns:
