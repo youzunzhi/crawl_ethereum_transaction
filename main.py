@@ -26,37 +26,28 @@ def main():
 
 
 def get_original_nodes():
+    # nodes = [
+    #     # low risk
+    #     '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
+    #     '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
+    #     '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
+    #     '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
+    #     '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
+    #     # high risk
+    #     '0x0b7f284d74f549731499c44aed2a10adcc9e9cc0',
+    #     '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
+    #     '0xDf9191889649C442836ef55De5036a7b694115b6',
+    #     '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
+    #     '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
+    # ]
     nodes = [
-        # low risk
-        '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
-        '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
-        '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
-        '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
-        '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
-        # high risk
-        '0x0b7f284d74f549731499c44aed2a10adcc9e9cc0',
-        '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
         '0xDf9191889649C442836ef55De5036a7b694115b6',
-        '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
-        '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
     ]
     nodes_lower = []
     for add in nodes:
         nodes_lower.append(add.lower())
     return nodes_lower
 
-
-# def process_neighbor(neighbor):
-#     if neighbor in node_pardir_dict:
-#         old_order = get_order_of_searched_node(neighbor)
-#         if old_order > cur_order + 1:
-#             if old_order < K:  # which means it has its own dir
-#                 shutil.move(os.path.join(node_pardir_dict[neighbor], node), cur_dir)
-#                 node_pardir_dict[neighbor] = cur_dir
-#                 # 进入到这里说明neighbor是搜过的，应该避免重复再搜一遍。
-#             get_k_order_neighbor(cur_dir, neighbor, cur_order + 1)
-#     else:
-#         get_k_order_neighbor(cur_dir, neighbor, cur_order + 1)
 
 def get_k_order_neighbors_txns(pardir, node, cur_order):
     """
@@ -107,6 +98,8 @@ def get_k_order_neighbors_txns(pardir, node, cur_order):
             if is_valid_txn(txn):
                 txn_df = txn_df.append(txn2pdseries(txn), ignore_index=True)
                 neighbor = txn['from'].lower() if txn['from'].lower() != node else txn['to'].lower()
+                if neighbor in pardir.split('/') or neighbor in neighbor_set:
+                    continue
                 get_k_order_neighbors_txns(os.path.join(pardir, node), neighbor, cur_order + 1)
                 neighbor_set.add(neighbor)
         os.makedirs(os.path.join(pardir, node), exist_ok=True)
