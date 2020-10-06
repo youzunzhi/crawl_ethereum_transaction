@@ -26,22 +26,19 @@ def main():
 
 
 def get_original_nodes():
-    # nodes = [
-    #     # low risk
-    #     '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
-    #     '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
-    #     '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
-    #     '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
-    #     '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
-    #     # high risk
-    #     '0x0b7f284d74f549731499c44aed2a10adcc9e9cc0',
-    #     '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
-    #     '0xDf9191889649C442836ef55De5036a7b694115b6',
-    #     '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
-    #     '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
-    # ]
     nodes = [
+        # low risk
+        '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
+        '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
+        '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
+        '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
+        '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
+        # high risk
+        '0x0b7f284d74f549731499c44aed2a10adcc9e9cc0',
+        '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
         '0xDf9191889649C442836ef55De5036a7b694115b6',
+        '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
+        '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
     ]
     nodes_lower = []
     for add in nodes:
