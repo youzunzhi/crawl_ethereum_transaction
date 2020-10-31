@@ -3,9 +3,11 @@ import pandas as pd
 import urllib.request as urlrequest
 import json
 import os
+import sys
 import shutil
 import time
 import datetime
+import logging
 
 apikey="F9PB22XVU41P78AVBY3RZEK8EQMXE4HAGN"     # 这个换成自己账户的apikey
 TXN_DF_COLUMN_NAMES = ['TxHash', 'BlockHeight', 'TimeStamp', 'From', 'To', 'Value', 'ContractAddress', 'Input', 'isError']
@@ -18,11 +20,54 @@ node_pardir_dict = {}   # one-to-one mapping b/w node(addr) and its parent direc
 
 time_ = time.time()
 def main():
-    original_nodes = get_original_nodes()
-    for node in original_nodes:
-        get_k_order_neighbors_txns(OUTPUT_DIR, node, cur_order=-1)
-    print_node_hash()
+    # setup_logger(OUTPUT_DIR)
+    queue = get_original_nodes()
+    for original_node in queue:
+        node_pardir_dict[original_node] = OUTPUT_DIR
+    while queue:
+        queue = process_head_node(queue)
+    save_node_hash()
     # analyze_graph()
+
+
+def process_head_node(queue):
+    """
+    node = queue.pop(0)
+    assert node in node_pardir_dict
+    if order_of(node) == K:
+        return
+    neighbors = get_neighbors(node)
+    for neighbor_node in neighbors:
+        if neighbor_node not in node_pardir_dict:
+
+            queue.append(neighbor_node)
+    :return:
+    """
+    node = queue.pop(0)
+    assert node in node_pardir_dict
+    if order_of(node) == K:
+        return
+    cur_dir = os.path.join(node_pardir_dict[node], node)
+    os.makedirs(cur_dir, exist_ok=True)
+    txns = get_txns_of_node(node)
+    if len(txns) >= 10000:
+        return
+    txn_df = pd.DataFrame(columns=TXN_DF_COLUMN_NAMES)
+    neighbor_set = set()
+    for txn in txns:
+        if is_valid_txn(txn):
+            txn_df = txn_df.append(txn2pdseries(txn), ignore_index=True)
+            neighbor = txn['from'].lower() if txn['from'].lower() != node else txn['to'].lower()
+            if neighbor in node_pardir_dict:
+                continue
+            neighbor_set.add(neighbor)
+    for neighbor in neighbor_set:
+        queue.append(neighbor)
+        node_pardir_dict[neighbor] = cur_dir
+    txn_df.to_csv(os.path.join(cur_dir, f'txns.csv'))
+    df_neighbor = pd.DataFrame(data=list(neighbor_set), columns=['node'])
+    df_neighbor.to_csv(os.path.join(cur_dir, f'neighbors.csv'))
+    return queue
 
 
 def get_original_nodes():
@@ -44,65 +89,6 @@ def get_original_nodes():
     for add in nodes:
         nodes_lower.append(add.lower())
     return nodes_lower
-
-
-def get_k_order_neighbors_txns(pardir, node, cur_order):
-    """
-    if cur_order == K:
-        if node没被搜过：
-            node_pardir_dict[node] = pardir
-        return
-    if node被搜过且有文件夹：
-        if node上次被搜时的阶数大于当前阶数：
-            把node的文件夹移到pardir，也就是node应该在的pardir
-            读取node的所有neighbor
-            处理node的所有neighbor
-        else node上次被搜时的阶数小于等于当前阶数：
-            return
-    else 1. node没被搜过 or 2. node被搜过但是没有文件夹
-        node_pardir_dict[node] = pardir 1-加入dict，2-说明它之前是二阶，cur_dir是一阶及以下，它应该在pardir
-        爬取node的所有neighbor
-        处理node的所有neighbor
-
-    :param pardir: node的上级文件夹
-    :param node: node的address
-    :param cur_order: 当前阶数
-    :return:
-    """
-    if cur_order == K:
-        if node not in node_pardir_dict:
-            node_pardir_dict[node] = pardir
-        return
-    print(f"{cur_order}-order node {node} @ {pardir}, {time.strftime('%H:%M:%S', time.gmtime(time.time()-time_))}")
-    if node in node_pardir_dict and os.path.exists(os.path.join(node_pardir_dict[node], f'{node}/neighbors.csv')):
-        if get_order_of_searched_node(node) > cur_order:
-            print(f"moving {os.path.join(node_pardir_dict[node], node)} to {pardir}")
-            shutil.move(os.path.join(node_pardir_dict[node], node), pardir)
-            node_pardir_dict[node] = pardir
-            neighbors = get_neighbors(node)
-            for neighbor in neighbors:
-                get_k_order_neighbors_txns(os.path.join(pardir, node), neighbor, cur_order + 1)
-        else:
-            return
-    else:
-        node_pardir_dict[node] = pardir
-        txns = get_txns_of_node(node)
-        if len(txns) >= 10000:
-            return
-        txn_df = pd.DataFrame(columns=TXN_DF_COLUMN_NAMES)
-        neighbor_set = set()
-        for txn in txns:
-            if is_valid_txn(txn):
-                txn_df = txn_df.append(txn2pdseries(txn), ignore_index=True)
-                neighbor = txn['from'].lower() if txn['from'].lower() != node else txn['to'].lower()
-                if neighbor in pardir.split('/') or neighbor in neighbor_set:
-                    continue
-                get_k_order_neighbors_txns(os.path.join(pardir, node), neighbor, cur_order + 1)
-                neighbor_set.add(neighbor)
-        os.makedirs(os.path.join(pardir, node), exist_ok=True)
-        txn_df.to_csv(os.path.join(pardir, f'{node}/txns.csv'))
-        df_neighbor = pd.DataFrame(data=list(neighbor_set), columns=['node'])
-        df_neighbor.to_csv(os.path.join(pardir, f'{node}/neighbors.csv'))
 
 
 def get_txns_of_node(node):
@@ -160,7 +146,7 @@ def wei2ether(s):
     return Decimal(s1)
 
 
-def print_node_hash():
+def save_node_hash():
     print(len(node_pardir_dict))
     HASH_LEN = 10000
     hash_dict = {}
@@ -176,7 +162,7 @@ def print_node_hash():
             f.write('\n')
 
 
-def get_order_of_searched_node(node):
+def order_of(node):
     """
     #node whose pardir is 'results-[1004015004]/0x0059b14e35dab1b4eee1e2926c7a5660da66f747/' is ordered 0
     :param node:
@@ -186,13 +172,45 @@ def get_order_of_searched_node(node):
     return order
 
 
-def get_neighbors(node):
-    neighbors = []
-    with open(os.path.join(node_pardir_dict[node], f'{node}/neighbors.csv'), 'r') as f:
-        l = f.readlines()
-        for line in l[1:]:
-            neighbors.append(line.split(',')[1].strip())
-    return neighbors
+def setup_logger(output_dir, distributed_rank=0):
+    # ---- make output dir ----
+    # each experiment's output is in the dir named after the time when it starts to run
+    # log_dir_name = log_prefix + '-[{}]'.format((datetime.datetime.now()).strftime('%m%d%H%M%S'))
+    # log_dir_name += cfg.EXPERIMENT_NAME
+    os.makedirs(output_dir, exist_ok=True)
+
+    # ---- set up logger ----
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    # don't log results for the non-master process
+    if distributed_rank > 0:
+        return logger
+    ch = logging.StreamHandler(stream=sys.stdout)
+    ch.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s: %(message)s", '%m%d%H%M%S')
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    txt_name = 'log.txt'
+    for i in range(2, 100000):
+        if os.path.exists(os.path.join(output_dir, txt_name)):
+            txt_name = f'log-{i}.txt'
+        else:
+            break
+    fh = logging.FileHandler(os.path.join(output_dir, txt_name), mode='w')
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    return logger
+
+
+def log_info(log_str):
+    logger = logging.getLogger()
+    if len(logger.handlers):
+        logger.info(log_str)
+    else:
+        print(log_str)
 
 
 
