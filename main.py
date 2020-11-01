@@ -43,7 +43,7 @@ time_ = time.time()
 def read_node_searched(output_dir):
     node_pardir_dict = {}
     node_ordered_by_order = []
-    queue = os.listdir(output_dir)
+    queue = [d for d in os.listdir(output_dir) if d[:2]=='0x']
     for original_node in queue:
         node_pardir_dict[original_node] = output_dir
     while queue:
@@ -67,9 +67,9 @@ def read_node_searched(output_dir):
 
 def main():
     # setup_logger(OUTPUT_DIR)
-    is_read = False
+    is_read = True
     if is_read:
-        node_pardir_dict, node_ordered_by_order = read_node_searched('results-[1101155313]')
+        node_pardir_dict, node_ordered_by_order = read_node_searched('results-[1101201140]')
         save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dict)
         return
     node_pardir_dict = {}  # one-to-one mapping b/w node(addr) and its parent directory
@@ -123,8 +123,6 @@ def process_head_node(queue, node_pardir_dict):
     df_neighbor = pd.DataFrame(data=list(neighbor_set), columns=['node'])
     df_neighbor.to_csv(os.path.join(cur_dir, f'neighbors.csv'))
     return queue, node_pardir_dict
-
-
 
 
 def get_txns_of_node(node):
@@ -203,6 +201,7 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
     print(len(node_ordered_by_order), len(node_pardir_dict))
     node_cci_dict = {}  # cci: connected_component_idx
     cur_cci = 0
+    save_for_next_cci = -1
     # unseen_set = set(node_ordered_by_order)
     unseen_node_ordered = node_ordered_by_order.copy()
     while unseen_node_ordered:
@@ -219,13 +218,24 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
                 continue
             neighbors = get_neighbors(cur_queue_head, node_pardir_dict)
             for neighbor in neighbors:
+                if neighbor not in node_pardir_dict:
+                    continue
                 if neighbor not in node_cci_dict:
                     node_cci_dict[neighbor] = cur_cci
                     unseen_node_ordered.remove(neighbor)
                     cur_queue.append(neighbor)
                 else:
-                    assert node_cci_dict[neighbor] == cur_cci
-        cur_cci += 1
+                    if node_cci_dict[neighbor] != cur_cci:  # 说明现在的cc和之前的一个cc相连，但是因为连的是二阶节点所以找不到
+                        save_for_next_cci = cur_cci
+                        cur_cci = node_cci_dict[neighbor]
+                        for node, cci in node_cci_dict.items():
+                            if cci == save_for_next_cci:
+                                node_cci_dict[node] = cur_cci
+        if save_for_next_cci >= 0:
+            cur_cci = save_for_next_cci
+            save_for_next_cci = -1
+        else:
+            cur_cci += 1
     node_df = pd.DataFrame(columns=['node', 'connected_component_idx'])
     for node in node_ordered_by_order:
         node_df = node_df.append(pd.Series({'node': node, 'connected_component_idx': node_cci_dict[node]}), ignore_index=True)
