@@ -219,8 +219,6 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
                 continue
             neighbors = get_neighbors(cur_queue_head, node_pardir_dict)
             for neighbor in neighbors:
-                if len(os.listdir(os.path.join(node_pardir_dict[neighbor], neighbor))) == 0:
-                    continue
                 if neighbor not in node_cci_dict:
                     node_cci_dict[neighbor] = cur_cci
                     unseen_node_ordered.remove(neighbor)
