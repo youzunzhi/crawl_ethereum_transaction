@@ -16,21 +16,23 @@ OUTPUT_DIR = f'results-[{(datetime.datetime.now()).strftime("%m%d%H%M%S")}]/'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 K = 2
-node_pardir_dict = {}   # one-to-one mapping b/w node(addr) and its parent directory
 
 time_ = time.time()
 def main():
     # setup_logger(OUTPUT_DIR)
+    node_pardir_dict = {}  # one-to-one mapping b/w node(addr) and its parent directory
+    node_ordered_by_order = []  # searched node list ordered by the order of the node
     queue = get_original_nodes()
     for original_node in queue:
         node_pardir_dict[original_node] = OUTPUT_DIR
+
     while queue:
-        queue = process_head_node(queue)
-    save_node_hash()
-    # analyze_graph()
+        node_ordered_by_order.append(queue[0])
+        queue, node_pardir_dict = process_head_node(queue, node_pardir_dict)
+    save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dict)
 
 
-def process_head_node(queue):
+def process_head_node(queue, node_pardir_dict):
     """
     node = queue.pop(0)
     assert node in node_pardir_dict
@@ -45,29 +47,28 @@ def process_head_node(queue):
     """
     node = queue.pop(0)
     assert node in node_pardir_dict
-    if order_of(node) == K:
-        return
+    if order_of(node, node_pardir_dict) == K:
+        return queue, node_pardir_dict
     cur_dir = os.path.join(node_pardir_dict[node], node)
     os.makedirs(cur_dir, exist_ok=True)
     txns = get_txns_of_node(node)
     if len(txns) >= 10000:
-        return
+        return queue, node_pardir_dict
     txn_df = pd.DataFrame(columns=TXN_DF_COLUMN_NAMES)
     neighbor_set = set()
     for txn in txns:
         if is_valid_txn(txn):
             txn_df = txn_df.append(txn2pdseries(txn), ignore_index=True)
             neighbor = txn['from'].lower() if txn['from'].lower() != node else txn['to'].lower()
-            if neighbor in node_pardir_dict:
-                continue
             neighbor_set.add(neighbor)
     for neighbor in neighbor_set:
-        queue.append(neighbor)
-        node_pardir_dict[neighbor] = cur_dir
+        if neighbor not in node_pardir_dict:
+            queue.append(neighbor)
+            node_pardir_dict[neighbor] = cur_dir
     txn_df.to_csv(os.path.join(cur_dir, f'txns.csv'))
     df_neighbor = pd.DataFrame(data=list(neighbor_set), columns=['node'])
     df_neighbor.to_csv(os.path.join(cur_dir, f'neighbors.csv'))
-    return queue
+    return queue, node_pardir_dict
 
 
 def get_original_nodes():
@@ -146,23 +147,57 @@ def wei2ether(s):
     return Decimal(s1)
 
 
-def save_node_hash():
-    print(len(node_pardir_dict))
-    HASH_LEN = 10000
-    hash_dict = {}
-    for i in range(HASH_LEN):
-        hash_dict[i] = []
-    for node in node_pardir_dict.keys():
-        hash_idx = int(node, 16) % HASH_LEN
-        hash_dict[hash_idx].append(node)
-    with open(os.path.join(OUTPUT_DIR, 'node_hash.txt'), 'w') as f:
-        for i in range(HASH_LEN):
-            for node in hash_dict[i]:
-                f.write(node + ' ')
-            f.write('\n')
+def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dict):
+    print(len(node_ordered_by_order))
+    node_cci_dict = {}  # cci: connected_component_idx
+    cur_cci = 0
+    unseen_set = set(node_ordered_by_order)
+    while unseen_set:
+        cur_node = unseen_set.pop()
+        node_cci_dict[cur_node] = cur_cci
+        # bfs
+        cur_queue = [cur_node]
+        while cur_queue:
+            cur_queue_head = cur_queue.pop()
+            neighbors = get_neighbors(cur_queue_head, node_pardir_dict)
+            for neighbor in neighbors:
+                if neighbor not in node_cci_dict:
+                    node_cci_dict[neighbor] = cur_cci
+                    unseen_set.remove(neighbor)
+                    cur_queue.append(neighbor)
+                else:
+                    assert node_cci_dict[neighbor] == cur_cci
+        cur_cci += 1
+    node_df = pd.DataFrame(columns=['node', 'connected_component_idx'])
+    for node in node_ordered_by_order:
+        node_df = node_df.append(pd.Series({'node': node, 'connected_component_idx': node_cci_dict[node]}), ignore_index=True)
+        node_df.to_csv(os.path.join(OUTPUT_DIR, f'nodes.csv'))
 
 
-def order_of(node):
+def get_neighbors(node, node_pardir_dict):
+    neighbors = []
+    with open(os.path.join(node_pardir_dict[node], f'{node}/neighbors.csv'), 'r') as f:
+        l = f.readlines()
+        for line in l[1:]:
+            neighbors.append(line.split(',')[1].strip())
+    return neighbors
+# def save_node_hash():
+#     print(len(node_pardir_dict))
+#     HASH_LEN = 10000
+#     hash_dict = {}
+#     for i in range(HASH_LEN):
+#         hash_dict[i] = []
+#     for node in node_pardir_dict.keys():
+#         hash_idx = int(node, 16) % HASH_LEN
+#         hash_dict[hash_idx].append(node)
+#     with open(os.path.join(OUTPUT_DIR, 'node_hash.txt'), 'w') as f:
+#         for i in range(HASH_LEN):
+#             for node in hash_dict[i]:
+#                 f.write(node + ' ')
+#             f.write('\n')
+
+
+def order_of(node, node_pardir_dict):
     """
     #node whose pardir is 'results-[1004015004]/0x0059b14e35dab1b4eee1e2926c7a5660da66f747/' is ordered 0
     :param node:
