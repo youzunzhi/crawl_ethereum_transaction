@@ -47,8 +47,10 @@ def process_head_node(queue, node_pardir_dict):
     """
     node = queue.pop(0)
     assert node in node_pardir_dict
-    if order_of(node, node_pardir_dict) == K:
+    cur_order = order_of(node, node_pardir_dict)
+    if cur_order == K:
         return queue, node_pardir_dict
+    log_info(f"{cur_order}-order node {node} @ {node_pardir_dict[node]}, {time.strftime('%H:%M:%S', time.gmtime(time.time()-time_))}")
     cur_dir = os.path.join(node_pardir_dict[node], node)
     os.makedirs(cur_dir, exist_ok=True)
     txns = get_txns_of_node(node)
