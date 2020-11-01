@@ -226,16 +226,22 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
                     cur_queue.append(neighbor)
                 else:
                     if node_cci_dict[neighbor] != cur_cci:  # 说明现在的cc和之前的一个cc相连，但是因为连的是二阶节点所以找不到
-                        save_for_next_cci = cur_cci
-                        cur_cci = node_cci_dict[neighbor]
+                        time__ = time.time()
+                        if node_cci_dict[neighbor] < cur_cci:
+                            save_for_next_cci = cur_cci
+                            cur_cci = node_cci_dict[neighbor]
+                        else:
+                            save_for_next_cci = node_cci_dict[neighbor]
                         for node, cci in node_cci_dict.items():
                             if cci == save_for_next_cci:
                                 node_cci_dict[node] = cur_cci
+                        print(f"recolor happened, used {time.time()-time__:.06}s")
         if save_for_next_cci >= 0:
             cur_cci = save_for_next_cci
             save_for_next_cci = -1
         else:
             cur_cci += 1
+        print(f"{len(unseen_node_ordered)} node left, {time.strftime('%H:%M:%S', time.gmtime(time.time()-time_))}")
     node_df = pd.DataFrame(columns=['node', 'connected_component_idx'])
     for node in node_ordered_by_order:
         node_df = node_df.append(pd.Series({'node': node, 'connected_component_idx': node_cci_dict[node]}), ignore_index=True)
