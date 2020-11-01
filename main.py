@@ -15,15 +15,35 @@ TXN_FIELD_NAMES = ['hash', 'blockNumber', 'timeStamp', 'from', 'to', 'value', 'c
 OUTPUT_DIR = f'results-[{(datetime.datetime.now()).strftime("%m%d%H%M%S")}]/'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-K = 2
+K = 1
+
+def get_original_nodes():
+    nodes = [
+        # '0xf5501ca663fee9272d71125197ebf4d250d1ce35',
+        # '0x46dcc5a4f413fbf5b17f092784dbe321130c4874',
+        # low risk
+        # '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
+        # '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
+        '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
+        # '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
+        # '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
+        # high risk
+        # '0x0b7f284d74f549731499c44aed2a10adcc9e9cc0',
+        # '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
+        # '0xDf9191889649C442836ef55De5036a7b694115b6',
+        # '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
+        # '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
+    ]
+    nodes_lower = []
+    for add in nodes:
+        nodes_lower.append(add.lower())
+    return nodes_lower
 
 time_ = time.time()
-
 def read_node_searched(output_dir):
     node_pardir_dict = {}
     node_ordered_by_order = []
     queue = os.listdir(output_dir)
-    queue = get_original_nodes()
     for original_node in queue:
         node_pardir_dict[original_node] = output_dir
     while queue:
@@ -34,7 +54,10 @@ def read_node_searched(output_dir):
         if cur_order == K:
             continue
         cur_dir = os.path.join(node_pardir_dict[node], node)
-        neighbors = get_neighbors(node, node_pardir_dict)
+        if cur_order == 1:
+            neighbors = get_neighbors(node, node_pardir_dict)
+        else:
+            neighbors = [d for d in os.listdir(cur_dir) if d[:2]=='0x']
         for neighbor in neighbors:
             if neighbor not in node_pardir_dict:
                 queue.append(neighbor)
@@ -43,7 +66,12 @@ def read_node_searched(output_dir):
 
 
 def main():
-    setup_logger(OUTPUT_DIR)
+    # setup_logger(OUTPUT_DIR)
+    is_read = False
+    if is_read:
+        node_pardir_dict, node_ordered_by_order = read_node_searched('results-[1101155313]')
+        save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dict)
+        return
     node_pardir_dict = {}  # one-to-one mapping b/w node(addr) and its parent directory
     node_ordered_by_order = []  # searched node list ordered by the order of the node
     queue = get_original_nodes()
@@ -53,7 +81,6 @@ def main():
     while queue:
         node_ordered_by_order.append(queue[0])
         queue, node_pardir_dict = process_head_node(queue, node_pardir_dict)
-    # node_pardir_dict, node_ordered_by_order = read_node_searched('results-[1101155313]')
     save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dict)
 
 
@@ -77,10 +104,10 @@ def process_head_node(queue, node_pardir_dict):
         return queue, node_pardir_dict
     log_info(f"{cur_order}-order node {node} @ {node_pardir_dict[node]}, {time.strftime('%H:%M:%S', time.gmtime(time.time()-time_))}")
     cur_dir = os.path.join(node_pardir_dict[node], node)
-    os.makedirs(cur_dir, exist_ok=True)
     txns = get_txns_of_node(node)
     if len(txns) >= 10000:
         return queue, node_pardir_dict
+    os.makedirs(cur_dir, exist_ok=True)
     txn_df = pd.DataFrame(columns=TXN_DF_COLUMN_NAMES)
     neighbor_set = set()
     for txn in txns:
@@ -98,27 +125,6 @@ def process_head_node(queue, node_pardir_dict):
     return queue, node_pardir_dict
 
 
-def get_original_nodes():
-    nodes = [
-        # '0xf5501ca663fee9272d71125197ebf4d250d1ce35',
-        # '0x46dcc5a4f413fbf5b17f092784dbe321130c4874',
-        # low risk
-        '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
-        # '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
-        # '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
-        # '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
-        # '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
-        # high risk
-        '0x0b7f284d74f549731499c44aed2a10adcc9e9cc0',
-        # '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
-        # '0xDf9191889649C442836ef55De5036a7b694115b6',
-        # '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
-        # '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
-    ]
-    nodes_lower = []
-    for add in nodes:
-        nodes_lower.append(add.lower())
-    return nodes_lower
 
 
 def get_txns_of_node(node):
@@ -138,7 +144,15 @@ def get_txns_of_node(node):
 
     url_internal = f'http://api.etherscan.io/api?module=account&action=txlistinternal&address={node}&' \
                    f'startblock=0&endblock=99999999&sort=asc&apikey={apikey}'
-    txn_json_internal = json.loads(urlrequest.urlopen(url_internal).read().decode('utf8'))
+    for i in range(1000):
+        try:
+            txn_json_internal = json.loads(urlrequest.urlopen(url_internal).read().decode('utf8'))
+        except:
+            import traceback
+            print(node, traceback.format_exc())
+        else:
+            break
+        time.sleep(1)
     txns_internal = txn_json_internal['result'] if txn_json_internal['status'] == '1' else []
     txns += txns_internal
     return txns
@@ -186,14 +200,18 @@ def wei2ether(s):
 
 
 def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dict):
-    print(len(node_ordered_by_order))
+    print(len(node_ordered_by_order), len(node_pardir_dict))
     node_cci_dict = {}  # cci: connected_component_idx
     cur_cci = 0
-    unseen_set = set(node_ordered_by_order)
-    while unseen_set:
-        cur_node = unseen_set.pop()
+    # unseen_set = set(node_ordered_by_order)
+    unseen_node_ordered = node_ordered_by_order.copy()
+    while unseen_node_ordered:
+        cur_node = unseen_node_ordered.pop(0)
+        if cur_node in unseen_node_ordered:
+            print('That is not right', cur_node, node_pardir_dict[cur_node])
+            unseen_node_ordered.remove(cur_node)
         node_cci_dict[cur_node] = cur_cci
-        # bfs
+        # bfs to find connected components of cur_node
         cur_queue = [cur_node]
         while cur_queue:
             cur_queue_head = cur_queue.pop()
@@ -201,9 +219,11 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
                 continue
             neighbors = get_neighbors(cur_queue_head, node_pardir_dict)
             for neighbor in neighbors:
+                if len(os.listdir(os.path.join(node_pardir_dict[neighbor], neighbor))) == 0:
+                    continue
                 if neighbor not in node_cci_dict:
                     node_cci_dict[neighbor] = cur_cci
-                    unseen_set.remove(neighbor)
+                    unseen_node_ordered.remove(neighbor)
                     cur_queue.append(neighbor)
                 else:
                     assert node_cci_dict[neighbor] == cur_cci
@@ -216,10 +236,11 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
 
 def get_neighbors(node, node_pardir_dict):
     neighbors = []
-    with open(os.path.join(node_pardir_dict[node], f'{node}/neighbors.csv'), 'r') as f:
-        l = f.readlines()
-        for line in l[1:]:
-            neighbors.append(line.split(',')[1].strip())
+    if os.path.exists(os.path.join(node_pardir_dict[node], f'{node}/neighbors.csv')):
+        with open(os.path.join(node_pardir_dict[node], f'{node}/neighbors.csv'), 'r') as f:
+            l = f.readlines()
+            for line in l[1:]:
+                neighbors.append(line.split(',')[1].strip())
     return neighbors
 # def save_node_hash():
 #     print(len(node_pardir_dict))
