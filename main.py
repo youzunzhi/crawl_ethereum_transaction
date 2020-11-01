@@ -245,7 +245,7 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
     node_df = pd.DataFrame(columns=['node', 'connected_component_idx'])
     for node in node_ordered_by_order:
         node_df = node_df.append(pd.Series({'node': node, 'connected_component_idx': node_cci_dict[node]}), ignore_index=True)
-        node_df.to_csv(os.path.join(OUTPUT_DIR, f'nodes.csv'))
+    node_df.to_csv(os.path.join(OUTPUT_DIR, f'nodes.csv'))
 
 
 def get_neighbors(node, node_pardir_dict):
