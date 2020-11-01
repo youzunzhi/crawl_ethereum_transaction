@@ -18,17 +18,41 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 K = 2
 
 time_ = time.time()
+
+def read_node_searched(output_dir):
+    node_pardir_dict = {}
+    node_ordered_by_order = []
+    queue = os.listdir(output_dir)
+    for original_node in queue:
+        node_pardir_dict[original_node] = output_dir
+    while queue:
+        node = queue.pop(0)
+        node_ordered_by_order.append(node)
+        assert node in node_pardir_dict
+        cur_order = order_of(node, node_pardir_dict)
+        if cur_order == K:
+            continue
+        cur_dir = os.path.join(node_pardir_dict[node], node)
+        neighbors = get_neighbors(node, node_pardir_dict)
+        for neighbor in neighbors:
+            if neighbor not in node_pardir_dict:
+                queue.append(neighbor)
+                node_pardir_dict[neighbor] = cur_dir
+    return node_pardir_dict, node_ordered_by_order
+
+
 def main():
     # setup_logger(OUTPUT_DIR)
-    node_pardir_dict = {}  # one-to-one mapping b/w node(addr) and its parent directory
-    node_ordered_by_order = []  # searched node list ordered by the order of the node
-    queue = get_original_nodes()
-    for original_node in queue:
-        node_pardir_dict[original_node] = OUTPUT_DIR
-
-    while queue:
-        node_ordered_by_order.append(queue[0])
-        queue, node_pardir_dict = process_head_node(queue, node_pardir_dict)
+    # node_pardir_dict = {}  # one-to-one mapping b/w node(addr) and its parent directory
+    # node_ordered_by_order = []  # searched node list ordered by the order of the node
+    # queue = get_original_nodes()
+    # for original_node in queue:
+    #     node_pardir_dict[original_node] = OUTPUT_DIR
+    #
+    # while queue:
+    #     node_ordered_by_order.append(queue[0])
+    #     queue, node_pardir_dict = process_head_node(queue, node_pardir_dict)
+    node_pardir_dict, node_ordered_by_order = read_node_searched('results-[1101155313]')
     save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dict)
 
 
@@ -78,17 +102,17 @@ def get_original_nodes():
         # '0xf5501ca663fee9272d71125197ebf4d250d1ce35',
         # '0x46dcc5a4f413fbf5b17f092784dbe321130c4874',
         # low risk
-        '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
-        '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
-        '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
-        '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
-        '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
-        # high risk
+        # '0xfa171c2a5BB16cD608Ce3aC7A8e8C1e4B554EcBE',
+        # '0xd1707D1696cEE3254878bd81b0aE3b7252A06B6e',
+        # '0x4F71D67322f7f97944c26A917acD990b793E0f2A',
+        # '0xBE38a889D67467b665E30E20eE5604A6F5696e38',
+        # '0xcDE1250f112Ac69Ae5f7D561Ad052816476Fc6d1',
+        # # high risk
         '0x0b7f284d74f549731499c44aed2a10adcc9e9cc0',
-        '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
-        '0xDf9191889649C442836ef55De5036a7b694115b6',
-        '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
-        '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
+        # '0xF6884686a999f5ae6c1AF03DB92BAB9c6d7DC8De',
+        # '0xDf9191889649C442836ef55De5036a7b694115b6',
+        # '0x2664c334c46635f7845487d3BAb16992Fc83A93e',
+        # '0x1f6f1723d0db4e9783b7171392b6fa9ae1062fd9',
     ]
     nodes_lower = []
     for add in nodes:
@@ -172,6 +196,8 @@ def save_node_and_connected_component_idx(node_ordered_by_order, node_pardir_dic
         cur_queue = [cur_node]
         while cur_queue:
             cur_queue_head = cur_queue.pop()
+            if order_of(cur_queue_head, node_pardir_dict) == K:
+                continue
             neighbors = get_neighbors(cur_queue_head, node_pardir_dict)
             for neighbor in neighbors:
                 if neighbor not in node_cci_dict:
